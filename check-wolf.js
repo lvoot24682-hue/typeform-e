@@ -15,7 +15,7 @@ const { WOLF, OnlineState } = wolfjs;
 
 // ==================== ⚙️ البيانات الثابتة (عدّل حسب حاجتك) ====================
 const GROUP_ID = 18432094;
-const TARGET_DATE = "2026-09-19";           // التاريخ المطلوب (YYYY-MM-DD)
+const TARGET_DATE = "2026-09-20";           // التاريخ المطلوب (YYYY-MM-DD)
 const TARGET_MEMBER_ID = 80055399;          // العضوية التي رفعت الفعالية
 const MEMBERSHIP_NUMBER = "224";            // رقم عضويتك الأساسي في النموذج
 const FORM_URL = "https://survey-poll.typeform.com/to/JTsKMIEB";
