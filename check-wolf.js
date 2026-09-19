@@ -38,14 +38,9 @@ const sleep = ms =>
     new Promise(resolve => setTimeout(resolve, ms));
 
 function formatTime(date) {
-
     const h = date.getUTCHours();
-
-    const m = String(date.getUTCMinutes())
-        .padStart(2, '0');
-
+    const m = String(date.getUTCMinutes()).padStart(2, '0');
     const ampm = h >= 12 ? 'PM' : 'AM';
-
     return `${h % 12 || 12}:${m} ${ampm}`;
 }
 
@@ -54,50 +49,31 @@ function formatTime(date) {
 // ============================================================
 
 async function shutdown(code = 0) {
-
     console.log('');
     console.log('========================================');
     console.log('🛑 جاري إنهاء التشغيل...');
     console.log('========================================');
 
     try {
-
-        if (socket) {
-            socket.disconnect();
-        }
-
+        if (socket) socket.disconnect();
     } catch {}
 
     try {
-
         if (service?.websocket?.socket) {
             service.websocket.socket.disconnect();
         }
-
     } catch {}
 
     try {
-
         if (!browserClosed) {
-
             browserClosed = true;
-
             await closeSessionBrowser();
         }
-
     } catch (err) {
-
-        console.log(
-            '⚠️ تعذر إغلاق جلسة Chrome:',
-            err?.message || err
-        );
-
+        console.log('⚠️ تعذر إغلاق الجلسة:', err?.message || err);
     }
 
-    console.log(
-        `🏁 انتهى البرنامج — Code ${code}`
-    );
-
+    console.log(`🏁 انتهى البرنامج — Code ${code}`);
     process.exit(code);
 }
 
@@ -105,51 +81,26 @@ async function shutdown(code = 0) {
 // انتظار Authorization
 // ============================================================
 
-async function waitForSubscriber(
-    timeoutMs = 60000
-) {
+async function waitForSubscriber(timeoutMs = 60000) {
+    const started = Date.now();
+    console.log('⏳ انتظار Authorization...');
 
-    const started =
-        Date.now();
-
-    console.log(
-        '⏳ انتظار Authorization...'
-    );
-
-    while (
-        Date.now() - started <
-        timeoutMs
-    ) {
-
-        if (
-            service?.currentSubscriber?.id
-        ) {
-
+    while (Date.now() - started < timeoutMs) {
+        if (service?.currentSubscriber?.id) {
             console.log('');
             console.log('========================================');
             console.log('✅ Authorization complete');
             console.log('========================================');
-
-            console.log(
-                `👤 الحساب: ${
-                    service.currentSubscriber.username ||
-                    service.currentSubscriber.nickname ||
-                    'غير معروف'
-                }`
-            );
-
-            console.log(
-                `🆔 ID: ${
-                    service.currentSubscriber.id
-                }`
-            );
-
+            console.log(`👤 الحساب: ${
+                service.currentSubscriber.username ||
+                service.currentSubscriber.nickname ||
+                'غير معروف'
+            }`);
+            console.log(`🆔 ID: ${service.currentSubscriber.id}`);
             return true;
         }
-
         await sleep(500);
     }
-
     return false;
 }
 
@@ -158,80 +109,45 @@ async function waitForSubscriber(
 // ============================================================
 
 async function initializeHandlers() {
-
-    console.log(
-        '⚙️ تهيئة WOLF handlers...'
-    );
-
+    console.log('⚙️ تهيئة WOLF handlers...');
     await service.websocket.init();
-
-    const count =
-        Object.keys(
-            service.websocket.handlers || {}
-        ).length;
-
-    console.log(
-        `⚙️ تم تحميل ${count} handlers`
-    );
+    const count = Object.keys(service.websocket.handlers || {}).length;
+    console.log(`⚙️ تم تحميل ${count} handlers`);
 }
 
 // ============================================================
-// الاتصال باستخدام Google Chrome Profile
+// الاتصال باستخدام رموز GitHub
 // ============================================================
 
-async function connectUsingChromeProfile(
-    credentials
-) {
+async function connectUsingGitHubTokens(credentials) {
+    const token = credentials?.token;
+    const appCheckToken = credentials?.appCheckToken || '';
+    const deviceToken = credentials?.deviceToken || '';
 
-    const token =
-        credentials?.token;
-
-    const appCheckToken =
-        credentials?.appCheckToken || '';
-
-    const device =
-        credentials?.device || 'web';
-
-    const isAppCheckEnabled =
-        Boolean(
-            credentials?.isAppCheckEnabled ??
-            appCheckToken
-        );
+    const isAppCheckEnabled = Boolean(
+        credentials?.isAppCheckEnabled ?? appCheckToken
+    );
 
     if (!token) {
-
-        throw new Error(
-            'لم يتم العثور على v3APIToken في Google Chrome Profile.'
-        );
+        throw new Error('لم يتم العثور على v3APIToken في tokens.json');
     }
 
     console.log('');
     console.log('========================================');
-    console.log('🔐 بيانات جلسة Chrome');
+    console.log('🔐 بيانات الجلسة');
     console.log('========================================');
-
-    console.log(
-        `🔐 WOLF Token length: ${token.length}`
-    );
-
+    console.log(`🔐 WOLF Token length: ${token.length}`);
     console.log(
         appCheckToken
             ? `🛡️ AppCheck length: ${appCheckToken.length}`
             : '⚠️ AppCheck Token غير موجود'
     );
 
-    console.log(
-        `📱 Device: ${device}`
-    );
+    if (deviceToken) {
+        console.log(`📱 DeviceToken length: ${deviceToken.length}`);
+    }
 
-    console.log(
-        `🛡️ App Check: ${
-            isAppCheckEnabled
-                ? 'enabled'
-                : 'disabled'
-        }`
-    );
-
+    console.log(`🛡️ App Check: ${isAppCheckEnabled ? 'enabled' : 'disabled'}`);
     console.log('========================================');
 
     // ========================================================
@@ -239,17 +155,11 @@ async function connectUsingChromeProfile(
     // ========================================================
 
     service = new WOLF();
-
-    service.config.framework.login.token =
-        token;
-
-    service.config.framework.login.onlineState =
-        OnlineState.INVISIBLE;
+    service.config.framework.login.token = token;
+    service.config.framework.login.onlineState = OnlineState.INVISIBLE;
 
     if (appCheckToken) {
-
-        service.config.framework.login.appCheckToken =
-            appCheckToken;
+        service.config.framework.login.appCheckToken = appCheckToken;
     }
 
     // ========================================================
@@ -262,213 +172,100 @@ async function connectUsingChromeProfile(
     // إعداد الاتصال
     // ========================================================
 
-    const connection =
-        service._frameworkConfig?.get?.(
-            'connection'
-        );
+    const connection = service._frameworkConfig?.get?.('connection');
+    const host = connection?.host || 'https://v3-rc.palringo.com';
+    const port = connection?.port ?? 443;
 
-    const host =
-        connection?.host ||
-        'https://v3-rc.palringo.com';
-
-    const port =
-        connection?.port ?? 443;
-
-    const connectionDevice =
-        connection?.query?.device ||
-        device ||
-        'web';
+    // ★ نجبر device = 'web'
+    const connectionDevice = 'web';
 
     console.log('');
     console.log('========================================');
     console.log('🔌 بدء اتصال WOLF');
     console.log('========================================');
-
-    console.log(
-        `🌐 Host: ${host}`
-    );
-
-    console.log(
-        `🔌 Port: ${port}`
-    );
-
-    console.log(
-        `📱 Device: ${connectionDevice}`
-    );
+    console.log(`🌐 Host: ${host}`);
+    console.log(`🔌 Port: ${port}`);
+    console.log(`📱 Device: ${connectionDevice}`);
 
     // ========================================================
     // Socket.IO
     // ========================================================
 
-    socket =
-        io(
-            `${host}:${port}`,
-            {
-                transports: [
-                    'websocket'
-                ],
+    socket = io(`${host}:${port}`, {
+        transports: ['websocket'],
+        reconnection: true,
+        autoConnect: false,
+        query: {
+            token,
+            device: connectionDevice,
+            state: service.config.framework.login.onlineState,
+            version: connection?.version || undefined,
+            isAppCheckEnabled: isAppCheckEnabled ? 'true' : 'false',
+            appCheckToken: isAppCheckEnabled ? appCheckToken : undefined,
+            deviceToken: deviceToken || undefined
+        }
+    });
 
-                reconnection: true,
-
-                autoConnect: false,
-
-                query: {
-
-                    token,
-
-                    device:
-                        connectionDevice,
-
-                    state:
-                        service.config.framework
-                            .login.onlineState,
-
-                    version:
-                        connection?.version ||
-                        undefined,
-
-                    isAppCheckEnabled:
-                        isAppCheckEnabled
-                            ? 'true'
-                            : 'false',
-
-                    appCheckToken:
-                        isAppCheckEnabled
-                            ? appCheckToken
-                            : undefined
-                }
-            }
-        );
-
-    service.websocket.socket =
-        socket;
+    service.websocket.socket = socket;
 
     // ========================================================
     // Connected
     // ========================================================
 
-    socket.on(
-        'connect',
-        () => {
+    socket.on('connect', () => {
+        console.log('');
+        console.log('========================================');
+        console.log('🔗 تم الاتصال بـ WOLF Socket.IO');
+        console.log(`🔗 Connection ID: ${socket.id}`);
+        console.log('========================================');
+    });
 
-            console.log('');
-            console.log('========================================');
-            console.log(
-                '🔗 تم الاتصال بـ WOLF Socket.IO'
-            );
-            console.log(
-                `🔗 Connection ID: ${socket.id}`
-            );
-            console.log('========================================');
+    socket.on('connect_error', error => {
+        console.error('❌ Connection error:', error?.message || error);
+    });
 
-        }
-    );
-
-    // ========================================================
-    // Connection error
-    // ========================================================
-
-    socket.on(
-        'connect_error',
-        error => {
-
-            console.error(
-                '❌ Connection error:',
-                error?.message || error
-            );
-
-        }
-    );
-
-    // ========================================================
-    // Disconnect
-    // ========================================================
-
-    socket.on(
-        'disconnect',
-        reason => {
-
-            console.log(
-                `🔌 Connection closed: ${reason}`
-            );
-
-        }
-    );
+    socket.on('disconnect', reason => {
+        console.log(`🔌 Connection closed: ${reason}`);
+    });
 
     // ========================================================
     // تمرير أحداث WOLF إلى Handlers
     // ========================================================
 
-    socket.onAny(
-        async (
-            eventName,
-            data
-        ) => {
+    socket.onAny(async (eventName, data) => {
+        try {
+            if (eventName === 'group event update') return;
 
-            try {
+            const handler = service.websocket.handlers?.[eventName];
+            if (!handler) return;
 
-                if (
-                    eventName ===
-                    'group event update'
-                ) {
-
-                    return;
-                }
-
-                const handler =
-                    service.websocket
-                        .handlers?.[eventName];
-
-                if (!handler) {
-                    return;
-                }
-
-                await handler.process(
-                    data?.body ?? data
-                );
-
-            } catch (error) {
-
-                console.error(
-                    `❌ Handler error [${eventName}]:`,
-                    error?.message || error
-                );
-
-            }
-
+            await handler.process(data?.body ?? data);
+        } catch (error) {
+            console.error(
+                `❌ Handler error [${eventName}]:`,
+                error?.message || error
+            );
         }
-    );
+    });
 
     // ========================================================
     // الاتصال
     // ========================================================
 
-    console.log(
-        '🔌 Connecting...'
-    );
-
+    console.log('🔌 Connecting...');
     socket.connect();
 
     // ========================================================
     // انتظار Authorization
     // ========================================================
 
-    const ready =
-        await waitForSubscriber(
-            60000
-        );
-
+    const ready = await waitForSubscriber(60000);
     if (!ready) {
-
-        throw new Error(
-            'WOLF اتصل لكن Authorization لم يكتمل.'
-        );
+        throw new Error('WOLF اتصل لكن Authorization لم يكتمل.');
     }
 
     console.log('');
-    console.log(
-        '🟢 WOLF جاهز للفعاليات.'
-    );
+    console.log('🟢 WOLF جاهز للفعاليات.');
 }
 
 // ============================================================
@@ -476,91 +273,48 @@ async function connectUsingChromeProfile(
 // ============================================================
 
 async function getTargetDayEvents() {
-
     console.log('');
-    console.log(
-        '🔍 جاري جلب فعاليات الروم...'
-    );
-
-    console.log(
-        `🏠 GROUP_ID: ${GROUP_ID}`
-    );
-
-    console.log(
-        `📅 TARGET_DATE: ${TARGET_DATE}`
-    );
-
-    console.log(
-        `👤 TARGET_MEMBER_ID: ${TARGET_MEMBER_ID}`
-    );
+    console.log('🔍 جاري جلب فعاليات الروم...');
+    console.log(`🏠 GROUP_ID: ${GROUP_ID}`);
+    console.log(`📅 TARGET_DATE: ${TARGET_DATE}`);
+    console.log(`👤 TARGET_MEMBER_ID: ${TARGET_MEMBER_ID}`);
 
     try {
+        console.log('📡 إرسال GROUP_EVENT_LIST...');
 
-        console.log(
-            '📡 إرسال GROUP_EVENT_LIST...'
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new Error(
+                    'انتهت مهلة جلب قائمة الفعاليات بعد 30 ثانية.'
+                ));
+            }, 30000);
+        });
+
+        const requestPromise = service.websocket.emit(
+            Command.GROUP_EVENT_LIST,
+            {
+                id: Number(GROUP_ID),
+                languageId: 1,
+                subscribe: true,
+                offset: 0,
+                limit: service._frameworkConfig?.batching?.length || 100
+            }
         );
 
-        const timeoutPromise =
-            new Promise((_, reject) => {
-
-                setTimeout(() => {
-
-                    reject(
-                        new Error(
-                            'انتهت مهلة جلب قائمة الفعاليات بعد 30 ثانية.'
-                        )
-                    );
-
-                }, 30000);
-
-            });
-
-        const requestPromise =
-            service.websocket.emit(
-                Command.GROUP_EVENT_LIST,
-                {
-                    id: Number(GROUP_ID),
-                    languageId: 1,
-                    subscribe: true,
-                    offset: 0,
-                    limit:
-                        service._frameworkConfig
-                            ?.batching
-                            ?.length || 100
-                }
-            );
-
-        const listResponse =
-            await Promise.race([
-                requestPromise,
-                timeoutPromise
-            ]);
+        const listResponse = await Promise.race([
+            requestPromise,
+            timeoutPromise
+        ]);
 
         if (!listResponse?.success) {
-
-            console.log(
-                '❌ فشل جلب قائمة الفعاليات.'
-            );
-
-            console.log(
-                JSON.stringify(
-                    listResponse,
-                    null,
-                    2
-                )
-            );
-
+            console.log('❌ فشل جلب قائمة الفعاليات.');
+            console.log(JSON.stringify(listResponse, null, 2));
             return [];
         }
 
-        const body =
-            Array.isArray(listResponse.body)
-                ? listResponse.body
-                : [];
+        const body = Array.isArray(listResponse.body) ? listResponse.body : [];
 
-        console.log(
-            `📋 تم جلب ${body.length} فعالية من الروم.`
-        );
+        console.log(`📋 تم جلب ${body.length} فعالية من الروم.`);
 
         // ====================================================
         // فلترة حسب التاريخ (بتوقيت السعودية UTC+3)
@@ -569,39 +323,22 @@ async function getTargetDayEvents() {
         const dayEventIds = [];
 
         for (const ev of body) {
+            const info = ev.additionalInfo || {};
+            const startTimeStr = info.startsAt || ev.startsAt;
 
-            const info =
-                ev.additionalInfo || {};
+            if (!startTimeStr) continue;
 
-            const startTimeStr =
-                info.startsAt ||
-                ev.startsAt;
-
-            if (!startTimeStr) {
-                continue;
-            }
-
-            const startTime =
-                new Date(startTimeStr);
-
-            const ksaStart =
-                new Date(
-                    startTime.getTime() +
-                    (3 * 60 * 60 * 1000)
-                );
+            const startTime = new Date(startTimeStr);
+            const ksaStart = new Date(
+                startTime.getTime() + (3 * 60 * 60 * 1000)
+            );
 
             const dateStr =
                 `${ksaStart.getUTCFullYear()}-` +
-                `${String(
-                    ksaStart.getUTCMonth() + 1
-                ).padStart(2, '0')}-` +
-                `${String(
-                    ksaStart.getUTCDate()
-                ).padStart(2, '0')}`;
+                `${String(ksaStart.getUTCMonth() + 1).padStart(2, '0')}-` +
+                `${String(ksaStart.getUTCDate()).padStart(2, '0')}`;
 
-            if (dateStr !== TARGET_DATE) {
-                continue;
-            }
+            if (dateStr !== TARGET_DATE) continue;
 
             dayEventIds.push({
                 id: ev.id,
@@ -611,83 +348,50 @@ async function getTargetDayEvents() {
         }
 
         if (!dayEventIds.length) {
-
-            console.log(
-                'ℹ️ لا توجد فعاليات في هذا التاريخ.'
-            );
-
+            console.log('ℹ️ لا توجد فعاليات في هذا التاريخ.');
             return [];
         }
 
-        console.log(
-            `🔎 جاري جلب تفاصيل ${dayEventIds.length} فعالية...`
-        );
+        console.log(`🔎 جاري جلب تفاصيل ${dayEventIds.length} فعالية...`);
 
         // ====================================================
         // جلب تفاصيل الفعاليات وفلترة حسب منشئ الفعالية
         // ====================================================
 
-        const fullEvents =
-            await service.event.getByIds(
-                dayEventIds.map(e => e.id),
-                true
-            );
+        const fullEvents = await service.event.getByIds(
+            dayEventIds.map(e => e.id),
+            true
+        );
 
         const foundEvents = [];
 
-        (Array.isArray(fullEvents)
-            ? fullEvents
-            : []
-        ).forEach(fullEv => {
-
-            const meta =
-                dayEventIds.find(
-                    e => e.id === fullEv.id
-                );
-
-            if (!meta) {
-                return;
-            }
+        (Array.isArray(fullEvents) ? fullEvents : []).forEach(fullEv => {
+            const meta = dayEventIds.find(e => e.id === fullEv.id);
+            if (!meta) return;
 
             if (
                 fullEv.createdBy !== null &&
-                parseInt(fullEv.createdBy, 10) ===
-                    TARGET_MEMBER_ID
+                parseInt(fullEv.createdBy, 10) === TARGET_MEMBER_ID
             ) {
-
                 foundEvents.push({
                     id: fullEv.id,
                     dateStr: meta.dateStr,
-                    timeStr:
-                        formatTime(meta.start),
+                    timeStr: formatTime(meta.start),
                     start: meta.start
                 });
             }
         });
 
-        foundEvents.sort(
-            (a, b) => a.start - b.start
-        );
+        foundEvents.sort((a, b) => a.start - b.start);
 
-        console.log(
-            `✅ تم العثور على ${foundEvents.length} فعالية مطابقة.`
-        );
+        console.log(`✅ تم العثور على ${foundEvents.length} فعالية مطابقة.`);
 
         return foundEvents;
 
     } catch (err) {
-
         console.error('');
-        console.error(
-            '❌ خطأ أثناء جلب فعاليات الروم:'
-        );
-
-        console.error(
-            err?.stack ||
-            err?.message ||
-            err
-        );
-
+        console.error('❌ خطأ أثناء جلب فعاليات الروم:');
+        console.error(err?.stack || err?.message || err);
         return [];
     }
 }
@@ -740,7 +444,6 @@ const clickOkButton = async (page) => {
 // ============================================================
 
 async function submitEventsToForm(events) {
-
     if (events.length === 0) {
         console.log("⚠️ لا توجد فعاليات مطابقة في هذا التاريخ ليتم رفعها.");
         return;
@@ -888,77 +591,57 @@ async function submitEventsToForm(events) {
 // ============================================================
 
 async function main() {
-
     console.log('');
     console.log('========================================');
     console.log('🐺 WOLF Events → Typeform');
     console.log('🐺 wolf.js 2.7.10');
+    console.log('📦 Tokens from: anaayaar-ops/too');
     console.log('========================================');
     console.log('');
 
     try {
-
         // ====================================================
-        // 1. قراءة Google Chrome Profile
+        // 1. قراءة الرموز من GitHub
         // ====================================================
 
-        console.log(
-            '🌐 قراءة جلسة WOLF من Chrome Profile...'
-        );
+        console.log('🌐 قراءة الرموز من GitHub (too)...');
 
-        const credentials =
-            await loadSession();
+        const credentials = await loadSession();
 
         if (!credentials?.token) {
-
-            throw new Error(
-                'لم يتم العثور على v3APIToken في جلسة Chrome.'
-            );
+            throw new Error('لم يتم العثور على v3APIToken في tokens.json');
         }
 
-        console.log(
-            '✅ تم العثور على توكن WOLF'
-        );
+        console.log('✅ تم العثور على توكن WOLF');
 
         if (credentials.appCheckToken) {
-
             console.log(
-                `🛡️ AppCheck length: ${
-                    credentials.appCheckToken.length
-                }`
+                `🛡️ AppCheck length: ${credentials.appCheckToken.length}`
             );
-
-            console.log(
-                '✅ تم العثور على App Check Token'
-            );
-
+            console.log('✅ تم العثور على App Check Token');
         } else {
+            console.log('⚠️ لا يوجد App Check Token');
+        }
 
+        if (credentials.deviceToken) {
             console.log(
-                '⚠️ لا يوجد App Check Token'
+                `📱 DeviceToken length: ${credentials.deviceToken.length}`
             );
         }
 
-        console.log(
-            `📱 Device: ${
-                credentials.device || 'web'
-            }`
-        );
+        console.log(`📱 Device: ${credentials.device || 'web'}`);
 
         // ====================================================
-        // 2. الاتصال باستخدام Chrome Profile
+        // 2. الاتصال باستخدام الرموز
         // ====================================================
 
-        await connectUsingChromeProfile(
-            credentials
-        );
+        await connectUsingGitHubTokens(credentials);
 
         // ====================================================
         // 3. جلب فعاليات اليوم المستهدف
         // ====================================================
 
-        const foundEvents =
-            await getTargetDayEvents();
+        const foundEvents = await getTargetDayEvents();
 
         console.log(
             `\n📋 تم العثور على ${foundEvents.length} فعالية مطابقة.`
@@ -968,9 +651,7 @@ async function main() {
         // 4. رفعها إلى نموذج Typeform
         // ====================================================
 
-        await submitEventsToForm(
-            foundEvents
-        );
+        await submitEventsToForm(foundEvents);
 
         // ====================================================
         // 5. النهاية
@@ -982,22 +663,14 @@ async function main() {
         console.log('========================================');
 
         await sleep(1000);
-
         await shutdown(0);
 
     } catch (err) {
-
         console.error('');
         console.error('========================================');
         console.error('❌ حصل خطأ');
         console.error('========================================');
-
-        console.error(
-            err?.stack ||
-            err?.message ||
-            err
-        );
-
+        console.error(err?.stack || err?.message || err);
         await shutdown(1);
     }
 }
