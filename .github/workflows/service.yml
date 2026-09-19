@@ -19,14 +19,14 @@ jobs:
       # ======================================================
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       # ======================================================
       # Node.js
       # ======================================================
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -37,7 +37,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          echo ""
           echo "========================================"
           echo "📦 Installing dependencies"
           echo "========================================"
@@ -57,26 +56,33 @@ jobs:
           echo "========================================"
 
       # ======================================================
-      # Check Profile URL
+      # Verify WOLF_TOKENS_PAT
       # ======================================================
 
-      - name: Check WOLF Profile Secret
+      - name: Verify WOLF_TOKENS_PAT
         env:
-          WOLF_PROFILE_URL: ${{ secrets.WOLF_PROFILE_URL }}
+          WOLF_TOKENS_PAT: ${{ secrets.WOLF_TOKENS_PAT }}
         run: |
-          echo ""
           echo "========================================"
-          echo "🔐 Checking WOLF Profile"
+          echo "🔐 Verifying WOLF_TOKENS_PAT"
           echo "========================================"
 
-          if [ -z "$WOLF_PROFILE_URL" ]; then
-            echo "❌ WOLF_PROFILE_URL is NOT available"
+          if [ -z "$WOLF_TOKENS_PAT" ]; then
+            echo "❌ WOLF_TOKENS_PAT is NOT available"
             exit 1
           fi
+          echo "✅ WOLF_TOKENS_PAT is available"
 
-          echo "✅ WOLF_PROFILE_URL is available"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token $WOLF_TOKENS_PAT" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/anaayaar-ops/too/contents/tokens.json")
 
-          echo "========================================"
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Failed to access too/tokens.json: HTTP $STATUS"
+            exit 1
+          fi
+          echo "✅ Access to too/tokens.json confirmed"
 
       # ======================================================
       # Run Bot
@@ -84,18 +90,17 @@ jobs:
 
       - name: Run WOLF Event Task
         env:
-          WOLF_PROFILE_URL: ${{ secrets.WOLF_PROFILE_URL }}
+          WOLF_TOKENS_PAT: ${{ secrets.WOLF_TOKENS_PAT }}
         run: |
-          echo ""
           echo "========================================"
           echo "🐺 WOLF EVENT BOT"
+          echo "📦 Tokens from: anaayaar-ops/too"
           echo "========================================"
 
           echo "🕐 Start: $(date)"
           echo "🎯 المهمة: إنشاء الفعاليات + رفع الصور"
           echo "📱 DEVICE: web"
           echo "🛡️ APP CHECK: true"
-
           echo "========================================"
 
           npm start
@@ -114,7 +119,6 @@ jobs:
           fi
 
           echo "🕐 End: $(date)"
-
           echo "========================================"
 
           exit "$EXIT_CODE"
@@ -126,20 +130,13 @@ jobs:
       - name: Final Cleanup
         if: always()
         run: |
-          echo ""
           echo "========================================"
           echo "🧹 FINAL CLEANUP"
           echo "========================================"
 
-          echo "🛑 التأكد من عدم وجود WOLF process..."
-
           pkill -TERM -f "node check-wolf.js" 2>/dev/null || true
-
           sleep 2
-
           pkill -KILL -f "node check-wolf.js" 2>/dev/null || true
 
-          echo ""
           echo "✅ Final cleanup completed"
-
           echo "========================================"
